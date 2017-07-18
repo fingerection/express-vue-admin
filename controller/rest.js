@@ -16,10 +16,11 @@ class RestController extends BaseController {
    *
    * @param {any} modelName
    *
-   * @memberOf RestController
    */
   constructor(modelName) {
     super();
+
+    this.restRules = {}; // rest操作参数校验规则
 
     if (modelName) {
       this.modelName = modelName;
@@ -32,7 +33,6 @@ class RestController extends BaseController {
    *
    * @returns {Promise}
    *
-   * @memberOf RestController
    */
   index(req, res) {
     const params = req.query || {};
@@ -52,12 +52,11 @@ class RestController extends BaseController {
    * @param {any} data
    * @returns {Promise}
    *
-   * @memberOf RestController
    */
   create(req, res) {
     let data = req.body;
-    if (this.createRules) {
-      const validate = joi.validate(req.body, this.createRules);
+    if (this.restRules.create) {
+      const validate = joi.validate(req.body, this.restRules.create);
       if (validate.error) {
         return res.replyError(validate.error);
       }
@@ -73,22 +72,20 @@ class RestController extends BaseController {
    * @param {any} data
    * @returns {Promise}
    *
-   * @memberOf RestController
    */
   update(req, res) {
+    if (!req.params || !req.params.id) {
+      return res.replyError('missing id parameter');
+    }
+
     let data = req.body;
-    if (this.updateRules) {
-      const validate = joi.validate(req.body, this.updateRules);
+    if (this.restRules.update) {
+      const validate = joi.validate(req.body, this.restRules.update);
       if (validate.error) {
         return res.replyError(validate.error);
       }
       data = validate.value;
     }
-
-    if (!req.params || !req.params.id) {
-      return res.replyError('missing id parameter');
-    }
-
     res.reply(this.model.update(data, {where: {id: req.params.id}}));
   }
 
@@ -98,7 +95,6 @@ class RestController extends BaseController {
    * @param {any} id
    * @returns {Promise}
    *
-   * @memberOf RestController
    */
   show(req, res) {
     if (!req.params || !req.params.id) {
@@ -113,7 +109,6 @@ class RestController extends BaseController {
    * @param {any} id
    * @returns {Promise}
    *
-   * @memberOf RestController
    */
   destroy(req, res) {
     if (!req.params || !req.params.id) {

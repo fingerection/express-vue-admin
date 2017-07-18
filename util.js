@@ -4,9 +4,9 @@ const _ = require('lodash');
 
 module.exports = {
   // 根据配置构建路由 - [{path, method, target, middlewares }]
-  buildRoute: (router, routeMap, controller) => {
-    if (router && routeMap &&  routeMap.length && controller) {
-      _.each(routeMap, (route) => {
+  buildRoute: (router, controller, routeArr) => {
+    if (router && routeArr &&  routeArr.length && controller) {
+      _.each(routeArr, (route) => {
         router[route.method](route.path,  route.middlewares || [], (req, res) => {
           return controller[route.target](req, res);
         });
@@ -56,6 +56,11 @@ module.exports = {
 
       options.charset = options.charset || 'utf8';
       options.collate = options.collate || 'utf8_general_ci';
+
+      options.defaultScope = options.defaultScope || {};
+      options.defaultScope.attributes = options.defaultScope.attributes || {};
+      options.defaultScope.attributes.exclude = options.defaultScope.attributes.exclude || [];
+      options.defaultScope.attributes.exclude.push('deletedAt');
     }
     return options;
   }
