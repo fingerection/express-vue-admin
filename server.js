@@ -40,6 +40,13 @@ sequelize.authenticate()
   });
 
 // 中间件
+app.all('*', function (req, res, next) {
+  // 设置cors
+  res.header('Access-Control-Allow-Origin', req.headers.origin);
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header('Access-Control-Allow-Credentials', 'true');  // 允许发送Cookie数据
+  next();
+});
 if (util.isNotProdEnv()) {
   app.use(morgan('dev'));
 }
@@ -61,8 +68,8 @@ app.use(apiPath + '/admin', adminRouter);
 
 // 打印路由
 if (util.isNotProdEnv()) {
-  expressListRoutes({}, 'ROOT:', baseRouter );
-  expressListRoutes({ prefix: '/admin' }, 'ADMIN:', adminRouter );
+  expressListRoutes({}, 'ROOT:', baseRouter);
+  expressListRoutes({ prefix: '/admin' }, 'ADMIN:', adminRouter);
 }
 
 // 错误处理
@@ -74,3 +81,4 @@ app.listen(port, () => {
   console.log(`Server listening at - ${apiPath} : ${port}`);
 });
 
+module.exports = app;

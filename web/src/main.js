@@ -3,22 +3,24 @@
 import 'iview/dist/styles/iview.css';
 import iView from 'iview';
 import Vue from 'vue';
+import Vuex from 'vuex';
 import VueResource from 'vue-resource';
 import App from './App';
 import router from './router';
 
+Vue.use(Vuex);
 Vue.use(VueResource);
 Vue.use(iView);
 Vue.config.productionTip = false;
-// Vue.http.options.root = 'http://localhost:8080/api';
-Vue.http.options.root = 'http://localhost:6060';
+Vue.http.options.root = 'http://localhost:3000/api/v1';
 Vue.http.interceptors.push(function (request, next) {
+  request.credentials = true;
   next(function (response) {
-    // 通过event bus发送错误消息
-    const body = response.body;
-    if (body && body.code !== undefined && body.code !== 0) {
+    // 处理http请求异常
+    const data = response.data;
+    if (data && data.code > 0) {
       this.$Message.warning({
-        content: body.message || '后台未知错误',
+        content: data.message || '后台未知错误',
         duration: 5
       });
     } else if (response && response.status !== 200) {
@@ -38,18 +40,49 @@ Vue.http.interceptors.push(function (request, next) {
         duration: 5
       });
     }
-
-    if (body && body.data) {
-      response.data = body.data;
-    } else {
-      response.data = body;
-    }
   });
+});
+
+const store = new Vuex.Store({
+  state: {
+    user: {
+      userInfo: null,
+      roles: [],
+      permissions: []
+    }
+  },
+  mutations: {
+    /*eslint-disable */
+    clearUser(state) {
+      state.user.userInfo = null;
+      state.user.roles = [];
+      state.user.permissions = [];
+    },
+    updateUserInfo(state, data) {
+      state.user.userInfo = data;
+    },
+    updateRoles(state, data) {
+      state.user.roles = data;
+    },
+    updatePermissions(state, data) {
+      state.user.permissions = data;
+    }
+    /*eslint-enable */
+  }
+});
+
+router.beforeEach((to, from, next) => {
+  if (to.path !== '/login' && !store.state.user) {
+    next('/login');
+  } else {
+    next();
+  }
 });
 
 /* eslint-disable no-new */
 new Vue({
   el: '#app',
+  store,
   router,
   template: '<App/>',
   components: { App },
