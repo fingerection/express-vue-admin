@@ -43,6 +43,7 @@ sequelize.authenticate()
 app.all('*', function (req, res, next) {
   // 设置cors
   res.header('Access-Control-Allow-Origin', req.headers.origin);
+  res.header('Access-Control-Allow-Methods', "POST, GET, OPTIONS, DELETE, PUT");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   res.header('Access-Control-Allow-Credentials', 'true');  // 允许发送Cookie数据
   next();
@@ -55,7 +56,7 @@ app.use(session({
     host: process.env.REDIS_HOST,
     port: process.env.REDIS_PORT
   }),
-  secret: 'bilibili',
+  secret: 'express-vue-admin',
   resave: false,
   saveUninitialized: false
 }));

@@ -6,6 +6,7 @@ import Vue from 'vue';
 import Vuex from 'vuex';
 import VueResource from 'vue-resource';
 import App from './App';
+import EventBus from './event_bus';
 import router from './router';
 
 Vue.use(Vuex);
@@ -14,7 +15,7 @@ Vue.use(iView);
 Vue.config.productionTip = false;
 Vue.http.options.root = 'http://localhost:3000/api/v1';
 Vue.http.interceptors.push(function (request, next) {
-  request.credentials = true;
+  request.credentials = true; // 允许发送cookie
   next(function (response) {
     // 处理http请求异常
     const data = response.data;
@@ -24,6 +25,7 @@ Vue.http.interceptors.push(function (request, next) {
         duration: 5
       });
     } else if (response && response.status !== 200) {
+      console.error('vue http error response', response);
       let message = response.statusText;
       switch (response.status) {
         case 404:
@@ -58,28 +60,38 @@ const store = new Vuex.Store({
       state.user.roles = [];
       state.user.permissions = [];
     },
-    updateUserInfo(state, data) {
-      state.user.userInfo = data;
-    },
-    updateRoles(state, data) {
-      state.user.roles = data;
-    },
-    updatePermissions(state, data) {
-      state.user.permissions = data;
+    updateUser(state, data) {
+      if (data.id && data.username) {
+        state.user.userInfo = {
+          id: data.id,
+          username: data.username
+        };
+        state.user.roles = data.roles || [];
+        state.user.permissions = data.permissions || [];
+      }
     }
-    /*eslint-enable */
   }
 });
 
 router.beforeEach((to, from, next) => {
-  if (to.path !== '/login' && !store.state.user) {
-    next('/login');
+  const path = to.path.substr(1);
+  const pathPermission = path.split('/').join(':');
+  const permissions = store.state.user.permissions || [];
+  if (permissions.indexOf(pathPermission) < 0) {
+    // 禁止访问无权限页面
+    next(false);
   } else {
     next();
   }
 });
 
-/* eslint-disable no-new */
+router.afterEach((to, from) => {
+  EventBus.$emit('route-change', {
+    to: to,
+    from: from
+  });
+});
+
 new Vue({
   el: '#app',
   store,
@@ -87,3 +99,4 @@ new Vue({
   template: '<App/>',
   components: { App },
 });
+/*eslint-enable */

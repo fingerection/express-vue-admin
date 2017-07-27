@@ -1,21 +1,29 @@
 import Vue from 'vue';
 import Router from 'vue-router';
-import Index from '@/components/Index';
-import Login from '@/components/user/Login';
+import Dashboard from '@/components/Dashboard';
+import AdminUser from '@/components/admin/User';
+import AdminRole from '@/components/admin/Role';
+import AdminPermission from '@/components/admin/Permission';
 
 Vue.use(Router);
 
 export default new Router({
   routes: [
     {
-      path: '/',
-      name: 'Index',
-      component: Index,
+      path: '/dashboard',
+      component: Dashboard
     },
     {
-      path: '/login',
-      name: 'Login',
-      component: Login,
+      path: '/admin/user',
+      component: AdminUser
     },
-  ],
+    {
+      path: '/admin/role',
+      component: AdminRole
+    },
+    {
+      path: '/admin/permission',
+      component: AdminPermission
+    }
+  ]
 });
