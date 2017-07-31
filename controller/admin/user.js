@@ -11,18 +11,19 @@ class UserController extends RestController {
   constructor() {
     super('AdminUser');
 
-    this.restRules = {
-      create: {
-        username: joi.string().min(3).required(),
-        password: joi.string().min(6).required()
-      },
-      update: {
-        username: joi.string().min(3),
-        password: joi.string().min(6)
+    this.defaultUserRole = 'member';
+
+    const AdminRole = this.models['AdminRole'];
+    AdminRole.findOne({ where: { name: this.defaultUserRole}}).then((result) => {
+      if (!result) {
+        throw 'Failed to load the default user role!';
       }
-    };
+    });
   }
 
+  /**
+   * 分页返回所有对象
+   */
   index(req, res) {
     const params = req.query || {};
     const data = {
@@ -34,7 +35,85 @@ class UserController extends RestController {
     }
     const AdminRole = this.models['AdminRole'];
     data.include = [{ model: AdminRole, as: 'roles' }];
+    data.distinct = true;
     res.reply(this.model.findAndCount(data));
+  }
+
+  /**
+   * 创建对象
+   */
+  create(req, res) {
+    const rules = {
+      username: joi.string().min(3).required(),
+      password: joi.string().min(6).required(),
+      disabled: joi.boolean().default(false),
+      roles: joi.array().default([]),
+    };
+    const { error, value } = joi.validate(req.body, rules);
+    if (error) {
+      return res.replyError(error);
+    }
+
+    const AdminRole = this.models['AdminRole'];
+    const creationRoles = value.roles;
+    creationRoles.push(this.defaultUserRole);
+
+    const result = pw.hash(value.password).then((hash) => {
+      value.password = hash;
+      delete value.roles;
+      return AdminRole.findAll({ where: { name: { $in: creationRoles } } });
+    }).then((roles) => {
+      return this.model.create(value).then((user) => {
+        return user.setRoles(roles).then(() => {});
+      });
+    });
+    res.reply(result);
+  }
+
+  /**
+   * 更新对象
+   */
+  update(req, res) {
+    if (!req.params || !req.params.id) {
+      return res.replyError('missing id parameter');
+    }
+    const rules = {
+      username: joi.string().min(3),
+      password: joi.string().min(6),
+      disabled: joi.boolean(),
+      roles: joi.array(),
+    };
+    const { error, value } = joi.validate(req.body, rules);
+    if (error) {
+      return res.replyError(error);
+    }
+
+    const AdminRole = this.models['AdminRole'];
+    let updateRoles;
+
+    const result = Promise.resolve().then(() => {
+      if (value.password) {
+        return pw.hash(value.password).then((hash) => {
+          value.password = hash;
+        });
+      }
+    }).then(() => {
+      if (value.roles) {
+        return AdminRole.findAll({ where: { name: { $in: value.roles } } }).then((roles) => {
+          updateRoles = roles;
+        });
+      }
+    }).then(() => {
+      delete value.roles;
+      return this.model.findById(req.params.id).then((user) => {
+        return user.update(value);
+      });
+    }).then((user) => {
+      if (updateRoles) {
+        return user.setRoles(updateRoles).then(() => { });
+      }
+    });
+    res.reply(result);
   }
 
   // 获取用户角色列表

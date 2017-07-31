@@ -7,15 +7,18 @@ POST http://localhost:3000/api/v1/admin/users HTTP/1.1
 content-type: application/json
 
 {
-    "username": "admin",
-    "password": "adminpwd"
+    "username": "test",
+    "password": "testpwd",
+    "roles": ["admin", "member"]
 }
 
 PUT http://localhost:3000/api/v1/admin/users/1 HTTP/1.1
 content-type: application/json
 
 {
-    "username": "admin"
+    "username": "admin",
+    "password": "adminpwd",
+    "roles": ["admin"]
 }
 
 GET http://localhost:3000/api/v1/admin/users/1 HTTP/1.1

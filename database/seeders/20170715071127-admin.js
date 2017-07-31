@@ -12,42 +12,68 @@ const AdminRole = models['AdminRole'];
 const AdminPermission = models['AdminPermission'];
 
 const adminPwd = process.env.ADMIN_SEED_PASSWORD || 'adminpwd';
+const testPwd = process.env.TEST_SEED_PASSWORD || 'testpwd';
 
 module.exports = {
   up: function () {
+    let adminUser, testUser, adminRole, memberRole;
     return pw.hash(adminPwd).then((hash) => {
       return AdminUser.create({
         username: 'admin',
         password: hash,
-      }).then((user) => {
-        return AdminRole.create({
-          name: 'admin'
-        }).then((role) => {
-          return user.setRoles([role]).then(() => {
-            return role;
+      }).then((admin) => {
+        adminUser = admin;
+        return pw.hash(testPwd).then((hash) => {
+          return AdminUser.create({
+            username: 'test',
+            password: hash,
           });
         });
-      }).then((role) => {
+      }).then((user) => {
+        testUser = user;
+        return AdminRole.create({
+          name: 'admin',
+          comment: '管理员'
+        }).then((role) => {
+          adminRole = role;
+          return AdminRole.create({
+            name: 'member',
+            comment: '普通用户'
+          });
+        }).then((role) => {
+          memberRole = role;
+          return adminUser.setRoles([memberRole, adminRole]).then(() => {
+            return testUser.setRoles([memberRole]);
+          });
+        });
+      }).then(() => {
         return Promise.mapSeries([
           {
-            name: 'dashboard'
+            name: 'dashboard',
+            comment: 'Dashboard'
           },
           {
-            name: 'admin'
+            name: 'admin',
+            comment: '后台管理'
           },
           {
-            name: 'admin:user'
+            name: 'admin:user',
+            comment: '后台管理:用户'
           },
           {
-            name: 'admin:role'
+            name: 'admin:role',
+            comment: '后台管理:角色'
           },
           {
-            name: 'admin:permission'
+            name: 'admin:permission',
+            comment: '后台管理:权限'
           }
         ], (data) => {
           return AdminPermission.create(data);
         }).then((permissions) => {
-          return role.setPermissions(permissions);
+          return memberRole.setPermissions([permissions[0]]).then(() => {
+            return adminRole.setPermissions(permissions);
+          });
         });
       });
     });

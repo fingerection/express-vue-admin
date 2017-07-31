@@ -11,7 +11,7 @@ const RedisStore = require('connect-redis')(session);
 const expressListRoutes = require('express-list-routes');
 
 const app = express();
-const port = process.env.SERVER_PORT || 3000;
+const port = process.env.NODE_ENV === 'test' ? process.env.SERVER_PORT_TEST || 3001 : process.env.SERVER_PORT || 3000;
 const apiPath = process.env.API_PATH + '/' + process.env.API_VERSION;
 const util = require('./util');
 const baseRouter = require('./route/base');
@@ -46,7 +46,12 @@ app.all('*', function (req, res, next) {
   res.header('Access-Control-Allow-Methods', "POST, GET, OPTIONS, DELETE, PUT");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   res.header('Access-Control-Allow-Credentials', 'true');  // 允许发送Cookie数据
-  next();
+  // intercept OPTIONS method
+  if ('OPTIONS' == req.method) {
+    res.send(200);
+  } else {
+    next();
+  }
 });
 if (util.isNotProdEnv()) {
   app.use(morgan('dev'));
