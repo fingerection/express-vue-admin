@@ -63,8 +63,10 @@ class UserController extends RestController {
       delete value.roles;
       return AdminRole.findAll({ where: { name: { $in: creationRoles } } });
     }).then((roles) => {
-      return this.model.create(value).then((user) => {
-        return user.setRoles(roles).then(() => {});
+      return this.sequelize.transaction((t) => {
+        return this.model.create(value, {transaction: t}).then((user) => {
+          return user.setRoles(roles, {transaction: t}).then(() => {});
+        });
       });
     });
     res.reply(result);
@@ -88,9 +90,8 @@ class UserController extends RestController {
       return res.replyError(error);
     }
 
-    const AdminRole = this.models['AdminRole'];
     let updateRoles;
-
+    const AdminRole = this.models['AdminRole'];
     const result = Promise.resolve().then(() => {
       if (value.password) {
         return pw.hash(value.password).then((hash) => {
@@ -106,12 +107,17 @@ class UserController extends RestController {
     }).then(() => {
       delete value.roles;
       return this.model.findById(req.params.id).then((user) => {
-        return user.update(value);
+        if (user && user.name === 'admin' && value.username) {
+          console.error('Found updates to admin username');
+          delete value.username;
+          console.error('Stopped updates to admin username');
+        }
+        return this.sequelize.transaction((t) => {
+          return user.update(value, {transaction: t}).then((user) => {
+            return user.setRoles(updateRoles, {transaction: t}).then(() => {});
+          });
+        });
       });
-    }).then((user) => {
-      if (updateRoles) {
-        return user.setRoles(updateRoles).then(() => { });
-      }
     });
     res.reply(result);
   }
@@ -141,25 +147,18 @@ class UserController extends RestController {
   // 更新用户角色
   updateRoles(req, res) {
     const rules = {
-      roles: joi.array().items(joi.object().keys({
-        id: joi.number().min(1).integer(),
-        name: joi.string().min(1)
-      }))
+      roles: joi.array()
     };
     const { error, value } = joi.validate(req.body, rules);
     if (error) {
       return res.replyError(error);
     }
 
-    const roleIds = _.map(value.roles, role => {
-      return role.id;
-    });
-    const AdminUser = this.models['AdminUser'];
     const AdminRole = this.models['AdminRole'];
-    res.reply(AdminUser.findById(req.params.id).then(user => {
+    res.reply(this.model.findById(req.params.id).then(user => {
       return AdminRole.findAll({
         where: {
-          id: { $in: roleIds }
+          name: { $in: value.roles }
         }
       }).then(roles => {
         return user.setAdminRole(roles);
@@ -201,6 +200,27 @@ class UserController extends RestController {
       }
     });
     res.reply(result);
+  }
+
+  /**
+  * 删除单个对象
+  */
+  destroy(req, res) {
+    if (!req.params || !req.params.id) {
+      return res.replyError('missing id parameter');
+    }
+
+    this.model.findById(req.params.id).then((obj) => {
+      if (obj) {
+        if (obj.name === 'admin') {
+          res.replyError('Admin can\'t be deleted!');
+        } else {
+          res.reply(obj.destroy());
+        }
+      } else {
+        res.replyError(this.modelName + ' not found');
+      }
+    });
   }
 }
 
